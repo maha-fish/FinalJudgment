@@ -6,12 +6,11 @@ A creative-mode-only artifact weapon mod for Minecraft 1.20.1 Forge.
 
 ## Features
 
-- Creative-mode-only artifact weapon with a unique visual style.
+- Creative-mode-only artifact weapon.
 - No crafting recipe; obtainable only from the creative inventory.
 - Layered attack paths that bypass most conventional defenses.
 - Pickup-bound: cannot be dropped or disarmed.
 - Optional diagnostic logging.
-- PvP automation disabled by default.
 
 ## Weapon Operation
 
@@ -37,16 +36,9 @@ Each input has an independent 50 ms cooldown. Attacks execute the layered kill c
 
 The package contains all required components; no additional downloads are needed.
 
-## Configuration
-
-- PvP targeting (disabled by default).
-- Diagnostic logging.
-- Entity type or UUID restrictions.
-
 ## Notes
 
 - The weapon is creative-mode only. Restrict creative mode access on public servers.
-- PvP automation is disabled by default. Not intended for public PvP servers.
 
 ## External System Interactions
 
