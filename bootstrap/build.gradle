@@ -1,0 +1,54 @@
+// bootstrap: 只放常量与基础类型，供 Bootstrap ClassLoader 加载（ENV_SPEC 4.5 / 规范 23）。
+// 禁止引用 net.minecraft.* / net.minecraftforge.* / com.maha_fish.finaljudgment.*
+// 由 :main 嵌入到 META-INF/bootstrap/，再由 Native 的 AddToBootstrapClassLoaderSearch 注入（不可撤回）。
+plugins {
+    id 'java-library'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = 'finaljudgment-bootstrap'
+}
+
+// D23：把自检 2（javap 无 MC / Forge 引用）变成构建门禁
+tasks.register('verifyBootstrapPurity') {
+    group = 'verification'
+    description = 'Fails the build if any bootstrap class references MC / Forge / mod types (rule 23).'
+    dependsOn tasks.named('classes')
+
+    def classesDir = layout.buildDirectory.dir('classes/java/main')
+    def forbidden = ['net/minecraft', 'net/minecraftforge', 'com/maha_fish']
+    inputs.dir(classesDir)
+
+    doLast {
+        def dir = classesDir.get().asFile
+        if (!dir.exists()) {
+            return
+        }
+        def violations = []
+        def checked = 0
+        dir.eachFileRecurse { file ->
+            if (!file.name.endsWith('.class')) {
+                return
+            }
+            checked++
+            // 常量池字符串是 modified UTF-8；禁止前缀都是 ASCII，直接按字节文本匹配即可
+            def text = new String(file.bytes, 'ISO-8859-1')
+            forbidden.each { token ->
+                if (text.contains(token)) {
+                    violations << "${file.name} -> ${token}"
+                }
+            }
+        }
+        if (!violations.isEmpty()) {
+            throw new GradleException("bootstrap 污染（规范 23）: " + violations.join('; '))
+        }
+        println "verifyBootstrapPurity: 通过（检查 ${checked} 个 class，无 MC / Forge / mod 引用）"
+    }
+}
+
+tasks.named('check') {
+    dependsOn 'verifyBootstrapPurity'
+}

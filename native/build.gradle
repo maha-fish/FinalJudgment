@@ -1,0 +1,41 @@
+// native: JVMTI / JNI layer, Windows x86_64 only (ENV_SPEC section 6).
+// Produces finaljudgment_native.dll at native/build/native/windows-x86_64/.
+
+def nativeLibName = 'finaljudgment_native.dll'
+def nativeOutDir = file('build/native/windows-x86_64')
+
+tasks.register('compileNative', Exec) {
+    group = 'build'
+    description = 'Compiles finaljudgment_native.dll with MinGW-w64 gcc.'
+
+    // ENV_SPEC section 6 priority: -Pgcc.path > gradle.properties gcc.path > FJ_GCC > default.
+    def gcc = project.findProperty('gcc.path')
+        ?: System.getenv('FJ_GCC')
+        ?: 'C:/mingw64/bin/gcc.exe'
+    def jdkHome = System.getProperty('java.home')
+
+    // NOTE: ENV_SPEC section 9's snippet passes `fileTree(...).files` straight to commandLine;
+    // Gradle then hands that collection to gcc as ONE argument
+    // ("ld.exe: cannot find [<all .c paths>]: Invalid argument").
+    // Fixed here by expanding each source file into its own absolute-path argument.
+    // All compiler options are otherwise identical to ENV_SPEC section 6/9.
+    def sources = fileTree('src/main/c').matching { include '**/*.c' }.files
+        .collect { it.absolutePath }
+        .sort()
+    def compileArgs = [gcc, '-shared', '-O2', '-Wall', '-Wno-unused-parameter',
+                       '-static-libgcc',
+                       '-o', new File(nativeOutDir, nativeLibName).absolutePath,
+                       "-I${jdkHome}/include",
+                       "-I${jdkHome}/include/win32"]
+    compileArgs.addAll(sources)
+    compileArgs.add('-lws2_32')
+
+    inputs.files(fileTree('src/main/c'))
+    outputs.file(new File(nativeOutDir, nativeLibName))
+
+    doFirst {
+        nativeOutDir.mkdirs()
+    }
+
+    commandLine compileArgs
+}

@@ -1,0 +1,56 @@
+// Root build script — multi-module skeleton for finaljudgment.
+// See ENV_SPEC.md section 3 (module layout), section 8 (global config), section 9 (module build deps).
+
+plugins {
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)' apply false
+    id 'org.spongepowered.mixin' version '0.7.+' apply false
+}
+
+subprojects {
+    repositories {
+        // Mirrors first: the dev machine has no reliable direct access to repo1.maven.org.
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+        maven { url 'https://maven.aliyun.com/repository/central' }
+        maven { url 'https://lss233.littleservice.cn/repositories/minecraft/' }
+        maven {
+            name = 'MinecraftForge'
+            url = 'https://maven.minecraftforge.net/'
+        }
+        // MixinGradle 与 mixin annotationProcessor
+        maven {
+            name = 'SpongePowered'
+            url = 'https://repo.spongepowered.org/repository/maven-public/'
+        }
+        mavenCentral()
+    }
+
+    // ENV_SPEC section 8: Windows defaults to GBK, Chinese comments would fail to compile.
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+
+    // ENV_SPEC section 2: JDK 17 is mandatory for the whole project.
+    plugins.withId('java') {
+        java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+// ===== 分发：把两个用户侧 jar 打进一个 zip（打包方案 ④）=====
+// 为什么是两个 jar：FML 按 MANIFEST 的 FMLModType 对 mods/ 里的 jar 分类，分类互斥，
+// 一个 jar 无法既当 mod 又当 ModLauncher 服务提供者；jarJar 的嵌套 jar 里的 services
+// 也永远扫不到（规范 2.3）。所以用"一次下载 / 一次解压"的 bundle 满足用户体验。
+tasks.register('bundleDist', Zip) {
+    group = 'distribution'
+    description = 'Packs the main mod jar and the coremod jar into one distributable zip.'
+
+    dependsOn ':main:jar', ':coremod:jar'
+
+    archiveFileName = "finaljudgment-${mod_version}.zip"
+    destinationDirectory = layout.projectDirectory.dir('build/dist')
+
+    // 保持原始文件名（coremod 的 "-transformer" 后缀必须在文件名结尾，不能重命名）
+    from(tasks.getByPath(':main:jar').archiveFile)
+    from(tasks.getByPath(':coremod:jar').archiveFile)
+    from(layout.projectDirectory.file('dist/INSTALL.txt'))
+}
+

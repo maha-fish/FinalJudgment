@@ -1,0 +1,76 @@
+// coremod: 独立 jar，直接放 mods/（ENV_SPEC 4.2）。
+// 命名以 -transformer 结尾；MANIFEST 用 FMLModType；mods.toml 不含 modType（规范 5）。
+plugins {
+    id 'java-library'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = 'finaljudgment-coremod'
+}
+
+dependencies {
+    // ASM 由 ModLauncher 提供（compileOnly，规范 28：只用 9.5 已存在的 API）
+    compileOnly 'cpw.mods:modlauncher:10.0.9'
+    compileOnly 'org.ow2.asm:asm:9.5'
+    compileOnly 'org.ow2.asm:asm-tree:9.5'
+    // 只用编译期标量常量（javac 内联）；绝不打包 common（规范 20/21）
+    compileOnly project(':common')
+}
+
+// 防护 2（构建期门禁）：守卫引用的开关类必须住在 coremod 包，
+// 一旦有人写回 common（game 层解析不到 → 运行期静默吞行为），构建直接失败。
+tasks.register('verifyCoremodPurity') {
+    group = 'verification'
+    description = 'Fails if any coremod class references the forbidden common/KillFlag owner.'
+    dependsOn tasks.named('classes')
+
+    def classesDir = layout.buildDirectory.dir('classes/java/main')
+    def forbidden = ['finaljudgment/common/KillFlag', 'finaljudgment/common/KillRegistry']
+    inputs.dir(classesDir)
+
+    doLast {
+        def dir = classesDir.get().asFile
+        if (!dir.exists()) {
+            return
+        }
+        def violations = []
+        def checked = 0
+        dir.eachFileRecurse { file ->
+            if (!file.name.endsWith('.class')) {
+                return
+            }
+            checked++
+            def text = new String(file.bytes, 'ISO-8859-1')
+            forbidden.each { token ->
+                if (text.contains(token)) {
+                    violations << "${file.name} -> ${token}"
+                }
+            }
+        }
+        if (!violations.isEmpty()) {
+            throw new GradleException("coremod 污染（KillFlag 必须在 coremod 包）: " + violations.join('; '))
+        }
+        println "verifyCoremodPurity: 通过（检查 ${checked} 个 class，无禁止的 owner 引用）"
+    }
+}
+
+tasks.named('check') {
+    dependsOn 'verifyCoremodPurity'
+}
+
+tasks.named('jar', Jar).configure {
+    archiveClassifier = 'transformer'
+    manifest {
+        attributes(
+                // Coremod 类型只由 MANIFEST 决定；mods.toml 里没有 modType 字段
+                // 对照实验：GAMELIBRARY 只把 jar 当游戏库（服务会加载但 transformer 不生效）；
+                // MODLAUNCHER 才是"变换服务提供者"类型
+                'FMLModType': 'MODLAUNCHER',
+                'Implementation-Title': 'finaljudgment-coremod',
+                'Implementation-Version': project.version
+        )
+    }
+}

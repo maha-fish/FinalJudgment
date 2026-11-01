@@ -1,0 +1,40 @@
+{
+  "required": true,
+  "minVersion": "0.8.5",
+  "package": "com.maha_fish.finaljudgment.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "finaljudgment.refmap.json",
+  "mixins": [
+    "EntityAccessor",
+    "EntityInvoker",
+    "LivingEntityAccessor",
+    "SynchedEntityDataAccessor",
+    "DataItemAccessor",
+    "InventorySetItemMixin",
+    "MixinEntityInvulnerable",
+    "MixinLivingEntityHealth",
+    "MixinLivingEntityDie",
+    "MixinLivingEntityDrop",
+    "MixinPlayer",
+    "MixinPlayerDrop",
+    "MixinPlayerAttack",
+    "MixinServerPlayerDie",
+    "MixinUseItemPacket",
+    "MixinEntityTickCapture",
+    "MixinEntityPickable",
+    "MixinEntityBait",
+    "MixinEntityDistance",
+    "MixinServerLevelSpawn",
+    "MixinServerGamePacketListener"
+  ],
+  "client": [
+    "MinecraftAttackTriggerMixin",
+    "MixinEntityRenderDispatcher",
+    "MixinClientPacketListener",
+    "MixinMinecraftScreen",
+    "MixinRenderProtector"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

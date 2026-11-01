@@ -1,0 +1,18 @@
+// common: shared contract only — SRG name map, global constants, state interface, KillFlag.
+// No MC / Forge / ModLauncher dependency (ENV_SPEC section 3 dependency rules).
+//
+// ASM (ENV_SPEC section 7, rule 28): compileOnly — resolveField(ClassNode, String[], String)
+// needs ASM types at compile time (asm-tree provides ClassNode). ASM is never packaged into this
+// module; it is supplied at runtime by the caller (coremod -> ModLauncher, main -> its own
+// implementation-scoped ASM). Only ASM 9.5 APIs may be used.
+plugins {
+    id 'java-library'
+}
+
+version = mod_version
+group = mod_group_id
+
+dependencies {
+    compileOnly 'org.ow2.asm:asm:9.5'
+    compileOnly 'org.ow2.asm:asm-tree:9.5'
+}

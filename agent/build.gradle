@@ -1,0 +1,50 @@
+// agent: standalone java agent jar (embedded into the main mod jar as META-INF/agent/).
+// ENV_SPEC 4.3: MANIFEST 三件套 + Can-Redefine-Classes / Can-Retransform-Classes, 自带 ASM.
+// 规范 28: 只用 ASM 9.5 已存在的 API。
+plugins {
+    id 'java-library'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = 'finaljudgment-agent'
+}
+
+dependencies {
+    // Agent 可能独立运行（子 JVM 附加），必须自带 ASM：用 implementation 打进 fat jar
+    implementation 'org.ow2.asm:asm:9.5'
+    implementation 'org.ow2.asm:asm-tree:9.5'
+    implementation 'org.ow2.asm:asm-commons:9.5'
+
+    // 仅编译期：common 的标量常量会被 javac 内联，运行期不依赖 common（保持 agent 独立）
+    compileOnly project(':common')
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes(
+                // MANIFEST 三件套（缺任一个都静默失效）
+                'Main-Class': 'com.maha_fish.finaljudgment.agent.AttachLauncher',
+                'Premain-Class': 'com.maha_fish.finaljudgment.agent.JudgmentAgent',
+                'Agent-Class': 'com.maha_fish.finaljudgment.agent.JudgmentAgent',
+                // 两个能力位
+                'Can-Redefine-Classes': 'true',
+                'Can-Retransform-Classes': 'true',
+                'Implementation-Title': 'finaljudgment-agent',
+                'Implementation-Version': project.version
+        )
+    }
+
+    // fat jar：把 ASM 一起打进来（自带的 ASM 与 MC 自带的不冲突：不同 ClassLoader）
+    from({
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }) {
+        exclude 'META-INF/MANIFEST.MF'
+        exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+        exclude 'META-INF/versions/**'
+        exclude 'module-info.class'
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
